@@ -1,0 +1,88 @@
+#libraries needed at different situations
+
+library(ggplot2)
+library(maps)
+library(dplyr)
+library(magrittr)
+library(sf)
+library(ozmaps)
+library(knitr)
+library(rvest)
+library(polite)
+library(readr)
+library(viridis)
+library(RColorBrewer)
+library(units)
+library(cowplot)
+library(colorspace)
+library(colorblindr)
+
+world <- map_data("world")
+Australia <- world %>% filter(region == "Australia") 
+Australia
+
+ggplot(Australia) +
+  geom_polygon(aes(x = long, y = lat, group = group))
+
+sf_oz <- ozmap_data("country")
+sf_oz %>% kable()
+ggplot(sf_oz) + geom_sf()
+
+sf_states <- ozmap_data("states")
+sf_states %>% kable()
+ggplot(sf_states) + geom_sf()
+
+covid_url <- "https://covidlive.com.au/report/cases"
+covid_data <- bow(covid_url) %>% 
+  scrape() %>% 
+  html_table() %>% 
+  purrr::pluck(2) %>% 
+  as_tibble()
+
+covid_data
+
+covid_data <- covid_data %>% 
+  mutate(STATE = case_when(
+    STATE == "NSW" ~ "New South Wales",
+    STATE == "WA" ~ "Western Australia",
+    STATE == "SA" ~ "South Australia",
+    STATE == "NT" ~ "Northern Territory",
+    STATE == "ACT" ~ "Australian Capital Territory",
+    TRUE ~ STATE )) %>% 
+  mutate(CASES = parse_number(CASES))
+
+covid_states <- left_join(ozmap_states, covid_data,
+                          by = c("NAME" = "STATE"))
+
+covid_states <- covid_states %>% 
+  filter(!(NAME == "Other Territories"))
+
+
+gcovid <- ggplot(covid_states) + 
+  geom_sf(aes(fill = CASES))+
+ 
+  scale_fill_gradientn(
+    colors = rainbow(5),
+    values = NULL,
+    space = "Lab",
+    na.value = "grey50",
+    guide = "colourbar",
+    aesthetics = "fill")+
+  geom_sf_label(aes(label = NAME), colour = "black", size = 2.5)
+  
+   #scale_fill_gradient(high = "#132B43",low = "#56B1F7")+
+  # Different color palettes to try out!!!
+  #geom_label(data = coords_points_for_labels, aes(X, Y, label = NAME), 
+             #colour = "black", size = 2)
+  #geom_sf_label(aes(label = NAME))+
+  #scale_fill_grey() 
+  #scale_fill_gradient(low = "white", high = "black")
+  #scale_color_hue(direction = -1, h.start=90)
+  #scale_color_continuous(trans = 'reverse')
+  #scale_fill_continuous(type = "rainbow")
+ 
+
+
+
+
+
